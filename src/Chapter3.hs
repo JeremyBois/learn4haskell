@@ -562,8 +562,7 @@ data City = City
 buildCastle :: String -> City -> City
 buildCastle name city@(City _ castle _) = case castle of
     CastleWithWalls _ -> city {cityCastle = CastleWithWalls name}
-    Castle _          -> city {cityCastle = Castle name}
-    _                 -> city
+    _                 -> city {cityCastle = Castle name}
 
 
 -- | buildHouse — add a new living house
@@ -594,7 +593,6 @@ houseToInt h = case h of
 
 countHouses :: City -> Int
 countHouses city = case cityHouses city of
-    []      -> 0
     houses  -> sum (map houseToInt houses)
 
 
@@ -1064,7 +1062,7 @@ instance Append Gold where
 
 instance Append [a] where
     append :: [a] -> [a] -> [a]
-    append l1 l2 = l1 ++ l2
+    append = (++)
 
 instance (Append a) => Append (Maybe a) where
     append :: Maybe a -> Maybe a -> Maybe a
@@ -1145,7 +1143,7 @@ isWeekend _        = False
 
 nextDay :: Day -> Day
 nextDay day
-    | maxBound  = minBound
+    | day == maxBound  = minBound
     | otherwise = succ day
 
 daysToParty :: Day -> Int
@@ -1274,7 +1272,7 @@ instance Fighter Knight where
             (HP hp) = getHP m
 
 
--- | What possible action a Fighter can do !
+-- | Possible actions for a Fighter.
 data Action = Hit | Run | Drink Beverage | Dance | Cry deriving (Show, Eq)
 data Beverage = Water | Milk deriving (Show, Eq)
 
