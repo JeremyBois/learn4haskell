@@ -523,8 +523,9 @@ True
 False
 -}
 isThird42 :: [Int] -> Bool
-isThird42 (_:_:z:_) = z == 42
-isThird42 _         = False
+-- Better than isThird42 (_:_:z:_) = z == 42
+isThird42 (_:_:42:_) = True
+isThird42 _          = False
 
 
 {- |
@@ -629,10 +630,8 @@ Implement a function that duplicates each element of the list
 
 -}
 duplicate :: [a] -> [a]
-duplicate = go
-  where
-    go []     = []
-    go (x:xs) = x : x : go xs
+duplicate []     = []
+duplicate (x:xs) = x : x : duplicate xs
 
 
 {- |
@@ -648,13 +647,9 @@ Write a function that takes elements of a list only in even positions.
 [2,3,4]
 -}
 takeEven :: [Int] -> [Int]
-takeEven = go
-  where
-    go [] = []
-    -- Wrong even for positions not element ...
-    -- go (x:xs) = if even x then x : go xs else go xs
-    go [x]      = [x]
-    go (x:_:xs) = x : go xs
+takeEven [] = []
+takeEven [x]      = [x]
+takeEven (x:_:xs) = x : takeEven xs
 
 
 {- |
@@ -762,12 +757,7 @@ value of the element itself
 🕯 HINT: Use combination of 'map' and 'replicate'
 -}
 smartReplicate :: [Int] -> [Int]
-smartReplicate = go
-  where
-    go []     = []
-    go xs = concat $ map (\v -> replicate v v) xs
-    -- Or
-    -- go (x:xs) = replicate x x ++ go xs
+smartReplicate = concatMap (\ v -> replicate v v)
 
 {- |
 =⚔️= Task 9
@@ -781,10 +771,10 @@ the list with only those lists that contain a passed element.
 🕯 HINT: Use the 'elem' function to check whether an element belongs to a list
 -}
 contains :: (Eq a) => a -> [[a]] -> [[a]]
-contains = go
-  where
-    go _ []       = []
-    go x (xs:xss) = if elem x xs then xs : go x xss else go x xss
+contains x = filter (elem x)
+  -- where
+    -- go _ []       = []
+    -- go x (xs:xss) = if x `elem` xs then xs : go x xss else go x xss
 
 
 {- |
@@ -888,12 +878,10 @@ list.
 🕯 HINT: Use the 'cycle' function
 -}
 rotate :: Int -> [a] -> [a]
-rotate = go
-  where
-    go _ [] = []
-    go pivot xs
+rotate _ [] = []
+rotate pivot xs
       | pivot < 0 = []
-      | otherwise = take lenL (drop pivot (cycle xs))
+      | otherwise = take lenL (drop (pivot `mod` lenL) (cycle xs))
       where
         lenL = length xs
 
