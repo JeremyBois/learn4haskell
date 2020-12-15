@@ -114,22 +114,30 @@ As always, try to guess the output first! And don't forget to insert
 the output in here:
 
 >>> :k Char
+Char :: *
 
 >>> :k Bool
+Bool :: *
 
 >>> :k [Int]
+[Int] :: *
 
 >>> :k []
+[] :: * -> *
 
 >>> :k (->)
+(->) :: * -> * -> *
 
 >>> :k Either
+Either :: * -> * -> *
 
 >>> data Trinity a b c = MkTrinity a b c
 >>> :k Trinity
+Trinity :: * -> * -> * -> *
 
 >>> data IntBox f = MkIntBox (f Int)
 >>> :k IntBox
+IntBox :: (* -> *) -> *
 
 -}
 
@@ -259,6 +267,9 @@ name.
 
 > QUESTION: Can you understand why the following implementation of the
   Functor instance for Maybe doesn't compile?
+type remains (Maybe a) where we want (Maybe b)
+Even if b can be the same type as a it could also be different so both pattern
+matches must output the same type
 
 @
 instance Functor Maybe where
@@ -267,6 +278,7 @@ instance Functor Maybe where
     fmap _ x = x
 @
 -}
+
 
 {- |
 =⚔️= Task 2
@@ -283,6 +295,7 @@ data Secret e a
     deriving (Show, Eq)
 
 
+
 {- |
 Functor works with types that have kind `* -> *` but our 'Secret' has
 kind `* -> * -> *`. What should we do? Don't worry. We can partially
@@ -293,7 +306,10 @@ values and apply them to the type level?
 -}
 instance Functor (Secret e) where
     fmap :: (a -> b) -> Secret e a -> Secret e b
-    fmap = error "fmap for Box: not implemented!"
+    -- Trap associated type (e) remains unchanged
+    fmap _ (Trap e)   = Trap e
+    fmap f (Reward a) = Reward (f a)
+
 
 {- |
 =⚔️= Task 3
@@ -306,6 +322,13 @@ typeclasses for standard data types.
 data List a
     = Empty
     | Cons a (List a)
+
+instance Functor List where
+    fmap _ Empty       = Empty
+    -- Recursively apply f to each element
+    fmap f (Cons x xx) = Cons (f x) (fmap f xx)
+
+
 
 {- |
 =🛡= Applicative
@@ -472,10 +495,12 @@ Implement the Applicative instance for our 'Secret' data type from before.
 -}
 instance Applicative (Secret e) where
     pure :: a -> Secret e a
-    pure = error "pure Secret: Not implemented!"
+    pure = Reward
 
     (<*>) :: Secret e (a -> b) -> Secret e a -> Secret e b
-    (<*>) = error "(<*>) Secret: Not implemented!"
+    (<*>) (Trap fe)  _  = Trap fe
+    (<*>) (Reward f) x  = fmap f x
+
 
 {- |
 =⚔️= Task 5
@@ -488,6 +513,19 @@ Implement the 'Applicative' instance for our 'List' type.
   may also need to implement a few useful helper functions for our List
   type.
 -}
+
+instance Applicative List where
+    pure x = Cons x Empty
+    Empty <*> _        = Empty
+    _     <*> Empty    = Empty
+    (Cons f fs) <*> xs = fmap f xs `addHelper` (fs <*> xs)
+
+
+addHelper :: List a -> List a -> List a
+addHelper Empty       ys = ys
+addHelper (Cons x xs) ys = Cons x (addHelper xs ys)
+
+
 
 
 {- |
@@ -600,7 +638,10 @@ Implement the 'Monad' instance for our 'Secret' type.
 -}
 instance Monad (Secret e) where
     (>>=) :: Secret e a -> (a -> Secret e b) -> Secret e b
-    (>>=) = error "bind Secret: Not implemented!"
+    (>>=) (Trap x)   _ = Trap x
+    (>>=) (Reward x) f = f x
+
+
 
 {- |
 =⚔️= Task 7
@@ -610,6 +651,11 @@ Implement the 'Monad' instance for our lists.
 🕯 HINT: You probably will need to implement a helper function (or
   maybe a few) to flatten lists of lists to a single list.
 -}
+
+instance Monad List where
+    (>>=) Empty _ = Empty
+    (>>=) (Cons x xs) f = f x `addHelper` (xs >>= f)
+
 
 
 {- |
@@ -629,7 +675,7 @@ Can you implement a monad version of AND, polymorphic over any monad?
 🕯 HINT: Use "(>>=)", "pure" and anonymous function
 -}
 andM :: (Monad m) => m Bool -> m Bool -> m Bool
-andM = error "andM: Not implemented!"
+andM bm1 bm2 = bm1 >>= \b1 -> if b1 then bm2 else pure False
 
 {- |
 =🐉= Task 9*: Final Dungeon Boss
@@ -672,6 +718,84 @@ Specifically,
    subtree of a tree
  ❃ Implement the function to convert Tree to list
 -}
+
+data BinaryTree a
+    = NodeBT a (BinaryTree a) (BinaryTree a)
+    | EmptyBT
+    deriving (Show, Read, Eq)
+
+instance Functor BinaryTree where
+    fmap _ EmptyBT = EmptyBT
+    fmap f (NodeBT x left right) = NodeBT (f x) (fmap f left) (fmap f right)
+
+
+-- | Switch left and right subtree of a tree recursively
+reverseTree :: BinaryTree a -> BinaryTree a
+reverseTree EmptyBT = EmptyBT
+reverseTree (NodeBT x left right) = NodeBT x (reverseTree right) (reverseTree left)
+
+
+data TraversalType
+    = PostOrder  -- ^ Starts from left subtree then right subtree then root
+    | PreOrder   -- ^ Starts from Root then left subtree and right subtree
+    | InOrder    -- ^ Starts from left subtree then root then right subtree
+
+
+preOrder :: BinaryTree a -> [a]
+preOrder EmptyBT = []
+preOrder (NodeBT x left right) = x : preOrder left ++ preOrder right
+
+postOrder :: BinaryTree a -> [a]
+postOrder EmptyBT = []
+postOrder (NodeBT x left right) = postOrder left ++ postOrder right ++ [x]
+
+inOrder :: BinaryTree a -> [a]
+inOrder EmptyBT = []
+inOrder (NodeBT x left right) = inOrder left ++ [x] ++ inOrder right
+
+
+-- | Convert a BinaryTree to a List using a specific traversal order
+toList :: BinaryTree a -> TraversalType -> [a]
+toList bt order = case order of
+    PostOrder -> postOrder bt
+    PreOrder  -> preOrder  bt
+    InOrder   -> inOrder   bt
+
+
+fromGenerator :: (a -> Maybe (a, a, a)) -> a -> BinaryTree a
+fromGenerator f x = case f x of
+    Just (x1, x2, x3) -> NodeBT x1 (fromGenerator f x2) (fromGenerator f x3)
+    Nothing           -> EmptyBT
+
+
+-- | Build a symetric tree of a specific depth
+buildSymetricTree :: Int -> BinaryTree Int
+buildSymetricTree depth = fromGenerator generator 0
+    where
+        generator x = if x < depth then Just (x, x+1, x+1) else Nothing
+
+
+-- Tests
+{- | A tree with depth == 3
+                0
+            1       1
+          2   2   2   2
+-}
+tree :: BinaryTree Int
+tree = buildSymetricTree 3
+
+reverseReverseTree :: BinaryTree a -> BinaryTree a
+reverseReverseTree = reverseTree . reverseTree
+
+treeEquals :: Bool
+treeEquals = reverseReverseTree tree == tree
+
+toListCheck :: BinaryTree a -> [[a]]
+toListCheck t = fmap (toList t) [InOrder, PostOrder, PreOrder]
+
+traversalCorrects :: Bool
+traversalCorrects =
+    toListCheck tree == [[2,1,2,0,2,1,2],[2,2,1,2,2,1,0],[0,1,2,2,1,2,2]]
 
 
 {-
