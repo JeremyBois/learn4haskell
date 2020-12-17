@@ -42,6 +42,7 @@ Perfect. Let's crush this!
 
 module Chapter4 where
 
+
 {- |
 =🛡= Kinds
 
@@ -514,16 +515,23 @@ Implement the 'Applicative' instance for our 'List' type.
   type.
 -}
 
+instance Semigroup (List a) where
+    (<>) = append
+
+instance Monoid (List a) where
+    mempty = Empty
+
 instance Applicative List where
     pure x = Cons x Empty
     Empty <*> _        = Empty
     _     <*> Empty    = Empty
-    (Cons f fs) <*> xs = fmap f xs `addHelper` (fs <*> xs)
+    (Cons f fs) <*> xs = fmap f xs <> (fs <*> xs)
 
 
-addHelper :: List a -> List a -> List a
-addHelper Empty       ys = ys
-addHelper (Cons x xs) ys = Cons x (addHelper xs ys)
+append :: List a -> List a -> List a
+append Empty       ys = ys
+append xs       Empty = xs
+append (Cons x xs) ys = Cons x (append xs ys)
 
 
 
@@ -654,7 +662,7 @@ Implement the 'Monad' instance for our lists.
 
 instance Monad List where
     (>>=) Empty _ = Empty
-    (>>=) (Cons x xs) f = f x `addHelper` (xs >>= f)
+    (>>=) (Cons x xs) f = f x <> (xs >>= f)
 
 
 
