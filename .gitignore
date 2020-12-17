@@ -53,3 +53,7 @@ TAGS
 
 # other
 .DS_Store
+
+# Sublime text
+# Workspace files are user-specific
+*.sublime-workspace
