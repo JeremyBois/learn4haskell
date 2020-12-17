@@ -751,7 +751,7 @@ postOrder (NodeBT x left right) = postOrder left ++ postOrder right ++ [x]
 
 inOrder :: BinaryTree a -> [a]
 inOrder EmptyBT = []
-inOrder (NodeBT x left right) = inOrder left ++ [x] ++ inOrder right
+inOrder (NodeBT x left right) = inOrder left ++ (x : inOrder right)
 
 
 -- | Convert a BinaryTree to a List using a specific traversal order
